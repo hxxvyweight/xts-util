@@ -1,0 +1,8 @@
+[package]
+name = "xts-util"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+zip = "9.8.1"
+flate2 = "1"
