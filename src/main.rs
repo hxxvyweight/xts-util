@@ -1,13 +1,14 @@
 use zip::ZipArchive;
 use flate2::read::GzDecoder;
-use std::io;
-use std::fs;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::process;
 use std::io;
 use std::env;
 
-const TARGET_FILE: &str = "6mb.gz";
 
+// Information to be included in finished zip, gz, xz etc report defined here.
 struct EntryZip {
     name: PathBuf,
     size_when_uncompressed: u64,
@@ -18,36 +19,35 @@ struct EntryZip {
 }
 
 
-
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
-        eprintln!("Usage: {} <query> <file>", args[0]);
+        eprintln!("Usage: {} <file>", args[0]);
         process::exit(1);
     }
     
 
+    
+    let dir = Path::new("queue/");
+    let target: PathBuf = dir.join(args[2].as_str());
 
-    let path = Path::new("queue/");
-    let target_dir = path.join(TARGET_FILE);
-    println!("{:?}", target_dir);
+    println!("{:?}", dir);
 
     //let entries: Vec<EntryZip> = handle_zip(&path)?;
-    handle_gz(&target_dir)?;
+    handle_gz(&target)?;
     Ok(())
 }
 
-
+// For extracting zip information from the target file
+// Information is pushed into a vec and returned
 fn handle_zip(file_path: &Path) -> io::Result<Vec<EntryZip>> {
 
-    let f = fs::File::open(file_path)?;
+    let f = File::open(file_path)?;
     let mut zip_file = ZipArchive::new(f)?;
     let mut entries: Vec<EntryZip> = Vec::new();
    
     for i in 0..zip_file.len() {
-    
-
        
         let file = zip_file.by_index(i)?;
        
@@ -77,9 +77,10 @@ fn handle_zip(file_path: &Path) -> io::Result<Vec<EntryZip>> {
     }
     Ok(entries)
 }
-
+// Extracts the gz file, wraps the result as a zip entry
+// and hands it to the JSON serializer for export to the host
 fn handle_gz(file_path: &Path) -> io::Result<()> {
-    let mut file = File::open(file_path)?;
+    let file = File::open(file_path)?;
     let gz = GzDecoder::new(&file);
 
     if let Some(h) = gz.header() {
@@ -91,9 +92,28 @@ fn handle_gz(file_path: &Path) -> io::Result<()> {
             } 
             None => println!("couldn't get valid filename"),
         }
+
         println!("mtime: {}", h.mtime());
     }
     Ok(())
 
+}
+
+fn match_gz_options(h: &GzHeader) {
+    if let Some(name) = h.filename() {
+        println!("filename: {}", String::from_utf8_lossy(name));
+    }
+
+    if let Some(extra) = h.extra() {
+        println!("extra: {}", String::from_utf8_lossy(extra));
+    }
+    if let Some(comment) = h.comment() {
+        println!("comment: {}", String::from_utf8_lossy(comment));
+    }
+    let mtime = h.mtime();
+    let os = h.operating_system();
+
+    println!("os: {}", os);
+    println!("mtime: {}", mtime)
 }
 
