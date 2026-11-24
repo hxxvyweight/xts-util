@@ -85,30 +85,26 @@ fn handle_zip(file_path: &Path) -> io::Result<Vec<InfoZip>> {
 /// and hands it to the JSON serializer for export to the host.
 /// Handles all options received from the gz file header,
 /// prints to stdout.
-fn handle_gz<InfoGz>(file_path: &Path) -> io::Result<InfoGz> {
+fn handle_gz(file_path: &Path) -> io::Result<InfoGz> {
     let f = File::open(file_path)?;
     let gz = GzDecoder::new(&f);
 
-    match h.header() {
-        Some(ok) => println!("OK"),
-        None => println!("error extracting gz header"),
-    }
-    if let Some(gz_name) = h.filename() {
-        let name = String::from_utf8_lossy(gz_name).to_string();
-        println!("filename: {}", name);
-    }
-    if let Some(extra) = h.extra() {
-        let extra = String::from_utf8_lossy(extra).to_string();
-        println!("extra: {}", extra);
-    }
-    if let Some(comment) = h.comment() {
-        let comment = String::from_utf8_lossy(comment).to_string();
-        println!("comment: {}", comment);
-    }
-    let os = h.operating_system();
-    let mtime = h.mtime();
-    println!("os: {}", os);
-    println!("mtime: {}", mtime);
+    let name = gz.header()
+        .and_then(|h| h.filename())
+        .map(|b| String::from_utf8_lossy(name).into_owned())
+        .unwrap_or_default();
+    let extra = gz.header()
+        .and_then(|h| h.extra())
+        .map(|b| String::from_utf8_lossy(extra).into_owned())
+        .unwrap_or_default();
+
+    let comment = gz.header()
+        .and_then(|h| h.comment())
+        .map(|b| String::from_utf8_lossy(comment).into_owned())
+        .unwrap_or_default();
+    let os = gz.header().map(|h| h.operating_system()).unwrap_or(255));
+    let mtime = gz.header().map(|h| h.mtime()).unwrap_or(0));
+
 
     Ok(InfoGz {
         name,
@@ -120,5 +116,5 @@ fn handle_gz<InfoGz>(file_path: &Path) -> io::Result<InfoGz> {
 }
 
 /// Returns all file paths in the given directory.
-fn get_paths(dir: &Path) -> io::Result<Vec<PathBuf>> {
+/*fn get_paths(dir: &Path) -> io::Result<Vec<PathBuf>> {
 }   
